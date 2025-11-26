@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Calculator</title>
+    <!-- Load Tailwind CSS via CDN for professional styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .calculator-grid {
+            display: grid;
+            /* Layout for 4 columns */
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 12px;
+            padding: 16px;
+        }
+        .calculator-btn {
+            @apply p-4 text-2xl font-semibold rounded-xl transition duration-150 shadow-md;
+            line-height: 1; /* Helps vertical alignment */
+            min-width: 50px;
+            min-height: 50px;
+        }
+        .number-btn {
+            @apply bg-white hover:bg-gray-100 text-gray-800;
+        }
+        .operator-btn {
+            @apply bg-orange-500 hover:bg-orange-600 text-white;
+        }
+        .control-btn {
+            @apply bg-gray-500 hover:bg-gray-600 text-white;
+        }
+        .equals-btn {
+            @apply bg-indigo-600 hover:bg-indigo-700 text-white;
+            grid-column: span 2; /* Make the equals button span two columns */
+        }
+        /* Mobile adjustments */
+        @media (max-width: 640px) {
+            .calculator-container {
+                width: 100%;
+                margin: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Calculator Container -->
+    <div class="calculator-container w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-4">Calculator</h1>
+        
+        <!-- Display Area -->
+        <div class="mb-4 bg-gray-100 p-4 rounded-xl shadow-inner border border-gray-200">
+            <!-- History/Expression Display (shows operator between numbers) -->
+            <div id="history-display" class="text-gray-500 text-lg h-6 overflow-hidden">0</div>
+            <!-- Current Input/Result Display -->
+            <div id="current-display" class="text-4xl font-bold text-right text-gray-900 h-10 overflow-hidden">0</div>
+        </div>
+
+        <!-- Button Grid -->
+        <div class="calculator-grid" id="calculator-buttons">
+            <!-- First Row (Controls) -->
+            <button class="calculator-btn control-btn" data-action="clear">C</button>
+            <button class="calculator-btn control-btn" data-action="delete">←</button>
+            <button class="calculator-btn operator-btn" data-operator="/">&divide;</button>
+            <button class="calculator-btn operator-btn" data-operator="*">&times;</button>
+
+            <!-- Second Row -->
+            <button class="calculator-btn number-btn" data-number="7">7</button>
+            <button class="calculator-btn number-btn" data-number="8">8</button>
+            <button class="calculator-btn number-btn" data-number="9">9</button>
+            <button class="calculator-btn operator-btn" data-operator="-">-</button>
+
+            <!-- Third Row -->
+            <button class="calculator-btn number-btn" data-number="4">4</button>
+            <button class="calculator-btn number-btn" data-number="5">5</button>
+            <button class="calculator-btn number-btn" data-number="6">6</button>
+            <button class="calculator-btn operator-btn" data-operator="+">+</button>
+
+            <!-- Fourth Row -->
+            <button class="calculator-btn number-btn" data-number="1">1</button>
+            <button class="calculator-btn number-btn" data-number="2">2</button>
+            <button class="calculator-btn number-btn" data-number="3">3</button>
+            <button class="calculator-btn equals-btn" data-action="calculate">=</button>
+            
+            <!-- Fifth Row -->
+            <button class="calculator-btn number-btn" data-number="0">0</button>
+            <button class="calculator-btn number-btn" data-action="decimal">.</button>
+        </div>
+
+    </div>
+
+    <script>
+        // DOM Element References
+        const historyDisplay = document.getElementById('history-display');
+        const currentDisplay = document.getElementById('current-display');
+        const buttonsContainer = document.getElementById('calculator-buttons');
+
+        // Calculator State Variables
+        let currentInput = '0';
+        let firstOperand = null;
+        let operator = null;
+        let waitingForSecondOperand = false;
+
+        // Function to update the DOM displays based on the current state
+        function updateDisplay() {
+            // Update the main display (current number)
+            currentDisplay.textContent = currentInput;
+
+            // Update the history display (shows the full expression)
+            if (firstOperand !== null && operator !== null) {
+                historyDisplay.textContent = `${firstOperand} ${operator} ${waitingForSecondOperand ? '' : currentInput}`;
+            } else {
+                historyDisplay.textContent = '';
+            }
+        }
+
+        // Handles input of numbers
+        function inputNumber(number) {
+            // If we are waiting for a new operand, reset the current input
+            if (waitingForSecondOperand) {
+                currentInput = number;
+                waitingForSecondOperand = false;
+            } else {
+                // Prevent multiple zeros at the start and overwrite '0' if it's the only number
+                if (currentInput === '0') {
+                    currentInput = number;
+                } else {
+                    currentInput += number;
+                }
+            }
+            console.log(`Input Number: ${currentInput}`); // Debugging check
+        }
+
+        // Handles the decimal point input
+        function inputDecimal() {
+            // If an operation has just been executed, start a new number with '0.'
+            if (waitingForSecondOperand) {
+                currentInput = '0.';
+                waitingForSecondOperand = false;
+                return;
+            }
+
+            // Only add a decimal if one doesn't already exist
+            if (!currentInput.includes('.')) {
+                currentInput += '.';
+            }
+            console.log(`Input Decimal: ${currentInput}`); // Debugging check
+        }
+
+        // Handles selection of an operator
+        function handleOperator(nextOperator) {
+            // Convert current input string to a number for calculation
+            const inputValue = parseFloat(currentInput);
+
+            // If an operator is already set AND we are waiting for a second operand,
+            // it means the user is changing the operator. Just update the operator and return.
+            if (operator && waitingForSecondOperand) {
+                operator = nextOperator;
+                updateDisplay(); // Update display to show the new operator
+                console.log(`Operator changed to: ${nextOperator}`);
+                return;
+            }
+
+            // 1. If this is the first number, store it as the first operand
+            if (firstOperand === null) {
+                firstOperand = inputValue;
+            } 
+            // 2. If an operator is already set, perform the pending calculation
+            else if (operator) {
+                const result = calculate(firstOperand, inputValue, operator);
+                
+                // Use a short helper function to format the result (remove trailing zeros for integers)
+                firstOperand = parseFloat(result.toFixed(10)); // Store result for chaining operations
+                currentInput = String(firstOperand); // Display the result
+            }
+
+            // Set the new operator and mark that we are waiting for the second number
+            waitingForSecondOperand = true;
+            operator = nextOperator;
+            console.log(`First Operand: ${firstOperand}, Operator: ${operator}`); // Debugging check
+        }
+
+        // Performs the actual mathematical operation
+        function calculate(first, second, op) {
+            console.log(`Calculating: ${first} ${op} ${second}`); // Debugging check
+            
+            let result;
+            switch (op) {
+                case '+':
+                    result = first + second;
+                    break;
+                case '-':
+                    result = first - second;
+                    break;
+                case '*':
+                    result = first * second;
+                    break;
+                case '/':
+                    // Basic division check (prevents division by zero)
+                    if (second === 0) {
+                         // IMPORTANT: Use a custom modal/message instead of alert()
+                         console.error('Error: Division by zero attempted.'); 
+                         currentDisplay.textContent = 'Error';
+                         // Reset state after showing error
+                         clearAll();
+                         return 0; 
+                    }
+                    result = first / second;
+                    break;
+                default:
+                    return second; // Fallback, shouldn't happen
+            }
+            return result;
+        }
+
+        // Executes the final calculation when '=' is pressed
+        function equals() {
+            // If there's no first operand or no operator, do nothing
+            if (firstOperand === null || operator === null) {
+                return;
+            }
+            
+            // The second operand is the current input
+            const secondOperand = parseFloat(currentInput);
+            
+            const result = calculate(firstOperand, secondOperand, operator);
+            
+            // Format the final result
+            currentInput = String(parseFloat(result.toFixed(10)));
+            
+            // Reset state, but keep the result as the starting point for a new calculation
+            firstOperand = null;
+            operator = null;
+            waitingForSecondOperand = false;
+            
+            console.log(`Final Result: ${currentInput}`); // Debugging check
+        }
+
+        // Resets the calculator state
+        function clearAll() {
+            currentInput = '0';
+            firstOperand = null;
+            operator = null;
+            waitingForSecondOperand = false;
+            console.log('Calculator cleared.'); // Debugging check
+        }
+
+        // Deletes the last digit from the current input
+        function deleteLast() {
+            if (waitingForSecondOperand) return; // Cannot delete if waiting for a new number
+            
+            if (currentInput.length > 1) {
+                currentInput = currentInput.slice(0, -1);
+            } else {
+                currentInput = '0';
+            }
+            console.log(`Input after deletion: ${currentInput}`); // Debugging check
+        }
+
+
+        // --- Event Listener Setup ---
+        
+        // This is the main event listener attached to the entire button container.
+        // It uses event delegation to capture clicks on any button inside.
+        buttonsContainer.addEventListener('click', (event) => {
+            // Task 3: Use console.log or breakpoints here for debugging
+            // console.log('Button Clicked Data:', event.target.dataset); 
+            
+            if (!event.target.matches('button')) {
+                return; // Ignore clicks that are not on a button
+            }
+
+            const button = event.target;
+            const number = button.dataset.number;
+            const operatorId = button.dataset.operator;
+            const action = button.dataset.action;
+
+            if (number) {
+                inputNumber(number);
+            } else if (operatorId) {
+                handleOperator(operatorId);
+            } else if (action === 'decimal') {
+                inputDecimal();
+            } else if (action === 'clear') {
+                clearAll();
+            } else if (action === 'delete') {
+                deleteLast();
+            } else if (action === 'calculate') {
+                equals();
+            }
+            
+            updateDisplay(); // Always update the screen after any interaction
+        });
+
+        // Initialize the display on load
+        updateDisplay(); 
+    </script>
+</body>
+</html>
