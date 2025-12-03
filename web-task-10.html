@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 10: Advanced JavaScript — ES6 + JSON</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7fa;
+      margin: 0;
+      padding: 2rem;
+    }
+    h1 { text-align: center; }
+
+    #controls {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+
+    select, input {
+      padding: 0.5rem;
+      font-size: 1rem;
+    }
+
+    #items {
+      max-width: 900px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+
+    .card {
+      background: white;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .card h3 { margin: 0 0 0.5rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Lab 10: Advanced JavaScript — JSON + ES6</h1>
+
+  <div id="controls">
+    <input type="text" id="search" placeholder="Search products..." />
+
+    <select id="sort">
+      <option value="default">Sort by...</option>
+      <option value="asc">Price: Low → High</option>
+      <option value="desc">Price: High → Low</option>
+    </select>
+  </div>
+
+  <div id="items"></div>
+
+  <script>
+    // Fetch JSON from a public API (Fake Store API)
+    const API_URL = 'https://fakestoreapi.com/products';
+
+    let products = [];
+
+    // Fetch and render
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch(API_URL);
+        const data = await response.json();
+
+        // store JSON data
+        products = data;
+        renderItems(products);
+      } catch (error) {
+        console.error('Fetch error:', error);
+      }
+    };
+
+    // Render function using template literals
+    const renderItems = (list) => {
+      const container = document.getElementById('items');
+      container.innerHTML = list
+        .map(({ title, price, description }) => `
+          <div class="card">
+            <h3>${title}</h3>
+            <p><strong>Price:</strong> $${price}</p>
+            <p>${description.substring(0, 80)}...</p>
+          </div>
+        `)
+        .join('');
+    };
+
+    // Search filter with ES6 arrow function
+    document.getElementById('search').addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase();
+      const filtered = products.filter(({ title }) =>
+        title.toLowerCase().includes(query)
+      );
+      renderItems(filtered);
+    });
+
+    // Sorting
+    document.getElementById('sort').addEventListener('change', (e) => {
+      const option = e.target.value;
+      let sorted = [...products]; // copy array
+
+      if (option === 'asc') {
+        sorted.sort((a, b) => a.price - b.price);
+      } else if (option === 'desc') {
+        sorted.sort((a, b) => b.price - a.price);
+      }
+
+      renderItems(sorted);
+    });
+
+    fetchProducts();
+  </script>
+</body>
+</html>
